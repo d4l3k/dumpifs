@@ -4,6 +4,8 @@
 //#ifdef QNX
 #include <stdarg.h>
 //#endif
+#include <stdio.h>
+#include <string.h>
 
 #include "sys/image.h"
 #include "sys/startup.h"
@@ -16,10 +18,10 @@
 #define ENDIAN_RET16(x)		((((x) >> 8) & 0xff) | \
 							(((x) & 0xff) << 8))
 
-							
+
 static char* progname = 0;
 static char* file = 0;
-static int fixchksum = 0;					
+static int fixchksum = 0;
 static int find(FILE *fp, const unsigned char *p, int len, int count) {
 	int                                     c;
 	int                                     i;
@@ -76,7 +78,7 @@ static void process(FILE *fp)
 	if((ipos = find(fp, (char*)&ihdr.signature, sizeof ihdr.signature, 0)) == -1) {
 		rewind(fp);
 		while(1){
-			if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {			
+			if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {
 				shdr.signature = ENDIAN_RET32(shdr.signature);
 				rewind(fp);
 				if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {
@@ -146,7 +148,7 @@ static void process(FILE *fp)
 			{
 				fseek(fp, ipos + ihdr.image_size-sizeof(itlr), SEEK_SET);
 				itlr.cksum = sum;
-				printf("Update - write %d bytes (expect write %d bytes)\n", fwrite(&itlr, sizeof itlr, 1, fp) * sizeof itlr, sizeof itlr);			
+				printf("Update - write %d bytes (expect write %d bytes)\n", fwrite(&itlr, sizeof itlr, 1, fp) * sizeof itlr, sizeof itlr);
 				fclose(fp);
 			}
 		}

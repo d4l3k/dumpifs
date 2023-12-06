@@ -1,16 +1,16 @@
 /*
  * $QNXLicenseC:
  * Copyright 2007, QNX Software Systems. All Rights Reserved.
- * 
- * You must obtain a written license from and pay applicable license fees to QNX 
- * Software Systems before you may reproduce, modify or distribute this software, 
- * or any work that includes all or part of this software.   Free development 
- * licenses are available for evaluation and non-commercial purposes.  For more 
+ *
+ * You must obtain a written license from and pay applicable license fees to QNX
+ * Software Systems before you may reproduce, modify or distribute this software,
+ * or any work that includes all or part of this software.   Free development
+ * licenses are available for evaluation and non-commercial purposes.  For more
  * information visit http://licensing.qnx.com or email licensing@qnx.com.
- *  
- * This file may contain contributions from others.  Please review this entire 
- * file for other proprietary rights or license notices, as well as the QNX 
- * Development Suite License Guide at http://licensing.qnx.com/license-guide/ 
+ *
+ * This file may contain contributions from others.  Please review this entire
+ * file for other proprietary rights or license notices, as well as the QNX
+ * Development Suite License Guide at http://licensing.qnx.com/license-guide/
  * for other information.
  * $
  */
@@ -73,7 +73,7 @@
 #ifdef QNX
 #include <lzo1x.h>
 #else
-#include <lzo/lzo1x.h> 
+#include <lzo/lzo1x.h>
 #endif
 #include <ucl/ucl.h>
 
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
 		case 'z':
 			zero_check_enabled = 0;
 			break;
-			
+
 		default:
 			break;
 		}
@@ -359,14 +359,14 @@ void display_script(FILE *fp, int pos, int len) {
 		case SCRIPT_TYPE_EXTERNAL: {
 			char			*cmd, *args, *envs;
 			int				i;
-			
+
 			cmd = hdr->external.args;
 			envs = args = cmd + strlen(cmd) + 1;
 			for(i = 0; i < hdr->external.argc; i++) {
 				envs = envs + strlen(envs) + 1;
 			}
 			i = strcmp(basename(cmd), args);
-			
+
 			if(i || (hdr->external.flags & (SCRIPT_FLAGS_SESSION | SCRIPT_FLAGS_KDEBUG | SCRIPT_FLAGS_SCHED_SET | SCRIPT_FLAGS_CPU_SET | SCRIPT_FLAGS_EXTSCHED))) {
 				printf("[ ");
 				if(i) {
@@ -417,20 +417,20 @@ void display_script(FILE *fp, int pos, int len) {
 				printf(" %s", args);
 				args = args + strlen(args) + 1;
 			}
-			
+
 			if(hdr->external.flags & SCRIPT_FLAGS_BACKGROUND) {
 				printf(" &");
 			}
 			printf("\n");
 			break;
 		}
-			
+
 		case SCRIPT_TYPE_WAITFOR:
 			printf("waitfor");
 			goto wait;
 		case SCRIPT_TYPE_REOPEN:
 			printf("reopen");
-wait:	
+wait:
 			if(hdr->waitfor_reopen.checks_lo || hdr->waitfor_reopen.checks_hi) {
 				int					checks = hdr->waitfor_reopen.checks_lo | hdr->waitfor_reopen.checks_hi << 8;
 
@@ -480,8 +480,8 @@ void process(const char *file, FILE *fp) {
 		rewind(fp);
 		//find startup signature and verify its validity
 		while(1){
-			if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {				
-			
+			if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {
+
 				shdr.signature = ENDIAN_RET32(shdr.signature);
 				rewind(fp);
 				if((spos = find(fp, (char *)&shdr.signature, sizeof shdr.signature, -1)) == -1) {
@@ -526,7 +526,7 @@ void process(const char *file, FILE *fp) {
 			} else {
 				fp2 = tmpfile();
 			}
-		
+
 			if(fp2 == NULL) {
 				error(1, "Unable to create a file to uncompress image.");
 				return;
@@ -552,7 +552,7 @@ void process(const char *file, FILE *fp) {
 					gzFile			*zin;
 
 					// We need an fd for zlib, and we cannot count on the fd
-					// position being the same as the FILE *'s, so fileno() 
+					// position being the same as the FILE *'s, so fileno()
 					// and lseek.
 					fd = fileno(fp);
 					lseek(fd, ftell(fp), SEEK_SET);
@@ -571,7 +571,7 @@ void process(const char *file, FILE *fp) {
 					unsigned	len, til=0, tol=0;
 					lzo_uint	out_len;
 					int			status;
-				
+
 					if(lzo_init() != LZO_E_OK) {
 						error(1,"decompression init failure");
 						return;
@@ -633,7 +633,7 @@ void process(const char *file, FILE *fp) {
 			fclose(fp);
 			fp = fp2;
 			rewind(fp2);
-		} 
+		}
 
 		if(CROSSENDIAN(shdr.flags1 & STARTUP_HDR_FLAGS1_BIGENDIAN)) {
 			unsigned long			*p;
@@ -915,9 +915,57 @@ void display_dir(FILE *fp, int ipos, struct image_dir *ent) {
 	}
 }
 
+int mkdir_p(const char *path)
+{
+	/* Adapted from http://stackoverflow.com/a/2336245/119527 */
+	const size_t len = strlen(path);
+	char _path[PATH_MAX];
+	char *p;
+
+	errno = 0;
+
+	/* Copy string so its mutable */
+	if (len > sizeof(_path)-1) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+	strcpy(_path, path);
+
+	/* Iterate the string */
+	for (p = _path + 1; *p; p++) {
+		if (*p == '/') {
+			/* Temporarily truncate */
+			*p = '\0';
+
+			printf("creating %s\n", _path);
+
+			if (mkdir(_path, S_IRWXU) != 0) {
+				if (errno != EEXIST)
+					return -1;
+			}
+
+			*p = '/';
+		}
+	}
+
+	if (mkdir(_path, S_IRWXU) != 0) {
+		if (errno != EEXIST)
+			return -1;
+	}
+
+	return 0;
+}
+
 void process_dir(FILE *fp, int ipos, struct image_dir *ent) {
 	if(flags & FLAG_DISPLAY) {
 		display_dir(fp, ipos, ent);
+	}
+
+	char* name = dirname(ent->path);
+
+	if(mkdir_p(name)) {
+		printf("unable to mkdir -p for %s\n", name);
+		return;
 	}
 }
 
@@ -954,44 +1002,6 @@ void process_device(FILE *fp, int ipos, struct image_device *ent) {
 	}
 }
 
-int mkdir_p(const char *path)
-{
-	/* Adapted from http://stackoverflow.com/a/2336245/119527 */
-	const size_t len = strlen(path);
-	char _path[PATH_MAX];
-	char *p; 
-
-	errno = 0;
-
-	/* Copy string so its mutable */
-	if (len > sizeof(_path)-1) {
-		errno = ENAMETOOLONG;
-		return -1; 
-	}   
-	strcpy(_path, path);
-
-	/* Iterate the string */
-	for (p = _path + 1; *p; p++) {
-		if (*p == '/') {
-			/* Temporarily truncate */
-			*p = '\0';
-
-			if (mkdir(_path, S_IRWXU) != 0) {
-				if (errno != EEXIST)
-					return -1; 
-			}
-
-			*p = '/';
-		}
-	}   
-
-	if (mkdir(_path, S_IRWXU) != 0) {
-		if (errno != EEXIST)
-			return -1; 
-	}   
-
-	return 0;
-}
 
 void extract_file(FILE *fp, int ipos, struct image_file *ent) {
 	char			*name;
@@ -1018,12 +1028,17 @@ void extract_file(FILE *fp, int ipos, struct image_file *ent) {
 			processing_done = 1;
 		}
 	}
-/*
-	if(mkdir_p(dirname(ent->path))) {
+
+	printf("file dir %s\n ", ent->path);
+	char dir_path[200];
+	strcpy(&dir_path, ent->path);
+        dirname(&dir_path);
+	printf("creating dir %s %s\n ", &dir_path, ent->path);
+	if(mkdir_p(&dir_path)) {
 		printf("unable to mkdir -p for %s\n", name);
 		return;
 	}
-*/
+
 	if(!(dst = fopen(name, "wb"))) {
 		error(0, "Unable to open %s: %s\n", name, strerror(errno));
 	}
@@ -1061,7 +1076,7 @@ const char *ehdr_type[] = {
 	"ET_DYN",
 	"ET_CORE"
 };
-	
+
 const char *ehdr_machine[] = {
 	"EM_NONE",
 	"EM_M32",
@@ -1364,18 +1379,18 @@ static int rifs_checksum(void *ptr, long len)
 
 	// The checksum may take a while for large images, so we want to poll the mini-driver
 	max=len;//max = (lsp.mdriver.size > 0) ? mdriver_cksum_max : len;
-	
+
 	sum = 0;
 	while(len > 0)
 	{
 		sum += *data++;
 		len -= 4;
 		/*mdriver_count += 4;
-		if(mdriver_count >= max) 
+		if(mdriver_count >= max)
 		{
 			// Poll the mini-driver when we reach the limit
 			mdriver_check();
-			mdriver_count = 0;	
+			mdriver_count = 0;
 		}*/
 	}
 	return(sum);
